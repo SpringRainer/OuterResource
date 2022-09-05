@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sychronize process</title>
+    <script src="/static/jquery.js" type="text/javascript"></script>
+</head>
+<body>
+    <input type="file" id="file"/>
+    批量插入数量: <input type="text" id="num"/>
+    <input type="button" value="提交" onclick="uploadFile()" /> <span id="uploadState"></span>
+    <span id="handleProcess"></span>
+</body>
+<script>
+    var total = "";
+    var filename = "";
+
+    function uploadFile() {
+        var formData = new FormData();
+        var file = document.getElementById("file").files[0];
+        console.log(file);
+        formData.append("file", file);
+        formData.append('fileName', file.name);
+        formData.append('num',typeof $("#num").val() == undefined ? 20000:$("#num").val());
+        $.ajax({
+            url: 'uploadCsvFile',
+            type: 'post',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            async: false,
+            success: function (res) {
+                console.log(res);
+                filename = res.filename;
+                total = res.total;
+                $("#uploadState").html("complete");
+                getCurrentProcess();
+                $.ajax({
+                    url: 'startTransform',
+                    type: 'post',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    async: true,
+                    success: function () {
+                        console.log("yes");
+                    },
+                    error: function () {
+                        console.log("exception");
+                    }
+                })
+            },
+            error: function (res) {
+                console.log(res);
+            }
+        });
+
+        function getCurrentProcess() {
+            var interval = setInterval(function() {
+                var formData = new FormData();
+
+                formData.append('filename', filename);
+                formData.append('total', total);
+                $.ajax({
+                    url: 'getRealTimeProcess',
+                    type: 'post',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    success: function (res) {
+                        console.log(res);
+                        $("#handleProcess").html(res.currentPercent);
+                        if (res.currentPercent >= 100) {
+                            clearInterval(interval);
+                        }
+                    },
+                    error: function (res) {
+                        console.log(res);
+                    }
+                });
+            }, 2000);
+        }
+    }
+</script>
+</html>
